@@ -214,25 +214,55 @@ The application uses a custom financial-focused design system built on top of Ta
 
 ## 🚀 Deployment
 
-The application can be deployed to any static hosting service:
+### Netlify Deployment (Recommended)
 
-1. **Vercel** (Recommended)
-   ```bash
-   npm run build
-   # Deploy the `dist` folder
+This project is optimized for Netlify with automatic configuration:
+
+1. **Connect to Netlify**
+   - Push your code to GitHub/GitLab
+   - Connect your repository to Netlify
+   - Netlify will automatically detect the build settings from `netlify.toml`
+
+2. **Build Settings** (automatically configured via `netlify.toml`)
+   - **Build Command**: `npm run build`
+   - **Publish Directory**: `dist`
+   - **Node Version**: 18
+
+3. **Environment Variables**
+   Set these in your Netlify dashboard:
+   ```
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
-2. **Netlify**
+4. **Deploy**
+   - Netlify will automatically build and deploy on every push to your main branch
+   - Preview deployments for pull requests
+   - Custom domain support
+
+### Manual Deployment
+
+For other hosting services:
+
+1. **Build the project**
    ```bash
    npm run build
-   # Deploy the `dist` folder
+   # Or for staging/production
+   npm run build:staging
+   npm run build:production
    ```
 
-3. **Custom Server**
-   ```bash
-   npm run build
-   # Serve the `dist` folder with any web server
-   ```
+2. **Deploy the `dist` folder**
+   - Upload the contents of the `dist` directory to your hosting service
+   - Ensure proper SPA routing (all routes redirect to `index.html`)
+
+### Available Build Scripts
+
+- `npm run build` - Production build
+- `npm run build:dev` - Development build
+- `npm run build:staging` - Staging build
+- `npm run build:production` - Explicit production build
+- `npm run netlify-build` - Type check + build (used by Netlify)
 
 ## 🤝 Contributing
 

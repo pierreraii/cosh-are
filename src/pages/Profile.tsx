@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { profileService } from '@/services/database'
+import { AppSidebar } from '@/components/app-sidebar'
+import { SiteHeader } from '@/components/site-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { User, Edit3, Check, X } from 'lucide-react'
 
 export default function Profile() {
@@ -83,22 +86,39 @@ export default function Profile() {
 
   if (profileLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-lg text-muted-foreground">Loading profile...</div>
-      </div>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <SiteHeader />
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-lg text-muted-foreground">Loading profile...</div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     )
   }
 
   if (!profile) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-lg text-muted-foreground">Unable to load profile</div>
-      </div>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <SiteHeader />
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-lg text-muted-foreground">Unable to load profile</div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-6">
+          <div className="max-w-2xl mx-auto space-y-6">
       {/* Profile Incomplete Alert */}
       {isProfileIncomplete && !isEditing && (
         <Alert>
@@ -311,6 +331,9 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
-    </div>
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

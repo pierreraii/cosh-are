@@ -513,7 +513,7 @@ export const dashboardService = {
       upcomingBookings,
       recentItems: items.slice(0, 5),
       recentExpenses: expenses.slice(0, 5),
-      upcomingBookings: bookings.slice(0, 5)
+      recentBookings: bookings.slice(0, 5)
     }
   },
 

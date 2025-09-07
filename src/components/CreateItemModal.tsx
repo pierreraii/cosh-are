@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { itemService, profileService } from "@/services/database";
+import { itemService } from "@/services/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, X, Users, DollarSign, Calendar } from "lucide-react";
-import { Profile, ITEM_CATEGORIES } from "@/types/database";
+import { Plus, Users, DollarSign, Calendar } from "lucide-react";
+import { ITEM_CATEGORIES } from "@/types/database";
 
 interface CreateItemModalProps {
   isOpen: boolean;
@@ -18,262 +17,224 @@ interface CreateItemModalProps {
   onCreate: () => Promise<void>;
 }
 
-interface OwnerInput {
-  userId: string;
-  percentage: number;
-}
-
-export const CreateItemModal = ({ isOpen, onClose, onCreate, users, currentUserId }: CreateItemModalProps) => {
+export const CreateItemModal = ({ isOpen, onClose, onCreate }: CreateItemModalProps) => {
+  const { user, profile } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
   const [value, setValue] = useState("");
-  const [owners, setOwners] = useState<OwnerInput[]>([{ userId: "", percentage: 100 }]);
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [location, setLocation] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const addOwner = () => {
-    if (owners.length < 5) {
-      // Recalculate percentages to split evenly
-      const newOwnerCount = owners.length + 1;
-      const evenPercentage = Math.floor(100 / newOwnerCount);
-      const remainder = 100 - (evenPercentage * newOwnerCount);
-      
-      const updatedOwners = owners.map((owner, index) => ({
-        ...owner,
-        percentage: index === 0 ? evenPercentage + remainder : evenPercentage
-      }));
-      
-      setOwners([...updatedOwners, { userId: "", percentage: evenPercentage }]);
-    }
-  };
-
-  const removeOwner = (index: number) => {
-    if (owners.length > 1) {
-      const newOwners = owners.filter((_, i) => i !== index);
-      // Redistribute percentages evenly
-      const evenPercentage = Math.floor(100 / newOwners.length);
-      const remainder = 100 - (evenPercentage * newOwners.length);
-      
-      setOwners(newOwners.map((owner, i) => ({
-        ...owner,
-        percentage: i === 0 ? evenPercentage + remainder : evenPercentage
-      })));
-    }
-  };
-
-  const updateOwnerUser = (index: number, userId: string) => {
-    const newOwners = [...owners];
-    newOwners[index].userId = userId;
-    setOwners(newOwners);
-  };
-
-  const updateOwnerPercentage = (index: number, percentage: number) => {
-    const newOwners = [...owners];
-    newOwners[index].percentage = percentage;
-    setOwners(newOwners);
-  };
-
-  const getTotalPercentage = () => {
-    return owners.reduce((sum, owner) => sum + owner.percentage, 0);
-  };
-
-  const getAvailableUsers = (currentIndex: number) => {
-    const selectedUserIds = owners
-      .filter((_, index) => index !== currentIndex)
-      .map(owner => owner.userId)
-      .filter(Boolean);
-    
-    return users.filter(user => !selectedUserIds.includes(user.id));
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
-    if (!title.trim() || !description.trim() || !value || getTotalPercentage() !== 100) {
+    if (!title.trim() || !value.trim() || !category) {
+      setError('Please fill in all required fields');
       return;
     }
 
-    // Validate all owners have users selected
-    if (owners.some(owner => !owner.userId)) {
-      alert("Please select a user for each owner.");
+    if (!user) {
+      setError('You must be logged in to create an item');
       return;
     }
 
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const itemOwners = owners.map(owner => ({
-      user: users.find(user => user.id === owner.userId)!,
-      percentage: owner.percentage
-    }));
 
-    onCreate({
-      title: title.trim(),
-      description: description.trim(),
-      value: parseFloat(value),
-      owners: itemOwners,
-      createdBy: currentUserId || ""
-    });
+    try {
+      const numericValue = parseFloat(value);
+      
+      if (isNaN(numericValue) || numericValue <= 0) {
+        setError('Please enter a valid positive value');
+        return;
+      }
+      
+      // Create the item in the database
+      const newItem = await itemService.createItem({
+        title: title.trim(),
+        description: description.trim() || null,
+        category,
+        total_value: numericValue,
+        purchase_date: purchaseDate || null,
+        location: location.trim() || null,
+        created_by: user.id
+      });
+      
+      if (!newItem) {
+        setError('Failed to create item');
+        return;
+      }
+      
+      await onCreate();
+      resetForm();
+      
+    } catch (error) {
+      console.error('Error creating item:', error);
+      setError('An error occurred while creating the item');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    // Reset form
-    setTitle("");
-    setDescription("");
-    setValue("");
-    setOwners([{ userId: "", percentage: 100 }]);
-    setIsSubmitting(false);
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setCategory('');
+    setValue('');
+    setPurchaseDate('');
+    setLocation('');
+    setError(null);
+  };
+
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Co-owned Item</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Add New Co-owned Item
+          </DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
+
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Basic Information */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Item Title</Label>
+            <h3 className="text-lg font-semibold">Basic Information</h3>
+            
+            <div>
+              <Label htmlFor="title">Item Title *</Label>
               <Input
                 id="title"
-                placeholder="e.g., Tesla Model 3, Vacation Cabin"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Beach House, Tesla Model Y, Boat"
                 required
               />
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Describe the item, its features, location, etc."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe the item..."
                 rows={3}
-                required
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="value">Value (USD)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">Category *</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ITEM_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="value">Estimated Value *</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="value"
+                    type="number"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder="0.00"
+                    className="pl-10"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="purchaseDate">Purchase Date</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="purchaseDate"
+                    type="date"
+                    value={purchaseDate}
+                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="location">Location</Label>
                 <Input
-                  id="value"
-                  type="number"
-                  placeholder="45000"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className="pl-10"
-                  min="0"
-                  step="0.01"
-                  required
+                  id="location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Where is this item located?"
                 />
               </div>
             </div>
           </div>
 
-          {/* Ownership Structure */}
+          {/* Ownership Section - Simplified for now */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold flex items-center">
-                <Users className="h-4 w-4 mr-2" />
-                Co-ownership Structure
-              </Label>
-              <Badge variant={getTotalPercentage() === 100 ? "default" : "destructive"}>
-                Total: {getTotalPercentage()}%
-              </Badge>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Ownership
+              </h3>
             </div>
-
-            <div className="space-y-3">
-              {owners.map((owner, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <Select
-                      value={owner.userId}
-                      onValueChange={(value) => updateOwnerUser(index, value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select co-owner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableUsers(index).map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="w-20">
-                    <Input
-                      type="number"
-                      value={owner.percentage}
-                      onChange={(e) => updateOwnerPercentage(index, parseInt(e.target.value) || 0)}
-                      min="1"
-                      max="100"
-                      className="text-center"
-                    />
-                  </div>
-                  
-                  <span className="text-sm text-muted-foreground">%</span>
-                  
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeOwner(index)}
-                    disabled={owners.length === 1}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+            
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-2">
+                You will be set as the 100% owner of this item.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You can add co-owners and adjust ownership percentages after creating the item.
+              </p>
             </div>
-
-            {owners.length < 5 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addOwner}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Co-owner
-              </Button>
-            )}
-
-            {getTotalPercentage() !== 100 && (
-              <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                <p className="text-sm text-warning">
-                  ⚠️ Ownership percentages must total exactly 100%
-                </p>
-              </div>
-            )}
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              variant="financial"
-              disabled={
-                !title.trim() || 
-                !description.trim() || 
-                !value || 
-                getTotalPercentage() !== 100 || 
-                owners.some(owner => !owner.userId) ||
-                isSubmitting
-              }
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-foreground text-background hover:bg-foreground/90"
             >
-              {isSubmitting ? "Creating..." : "Create Item"}
+              {isSubmitting ? 'Creating...' : 'Create Item'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
             </Button>
           </div>
         </form>
