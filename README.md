@@ -128,8 +128,6 @@ src/
 │   ├── ItemDetail.tsx  # Detailed item view
 │   ├── Layout.tsx      # App layout wrapper
 │   └── OwnershipChart.tsx # Ownership visualization
-├── data/
-│   └── mockData.ts     # Sample data for development
 ├── hooks/              # Custom React hooks
 ├── lib/
 │   ├── supabase.ts     # Supabase client configuration

@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "header": "Beach House",
+    "type": "Property",
+    "status": "Active",
+    "target": "18",
+    "limit": "5",
+    "reviewer": "John Doe"
+  },
+  {
+    "id": 2,
+    "header": "Mountain Cabin",
+    "type": "Property", 
+    "status": "Active",
+    "target": "29",
+    "limit": "24",
+    "reviewer": "Jane Smith"
+  },
+  {
+    "id": 3,
+    "header": "City Apartment",
+    "type": "Property",
+    "status": "Maintenance",
+    "target": "10",
+    "limit": "13",
+    "reviewer": "Bob Johnson"
+  }
+]

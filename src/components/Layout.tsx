@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Plus, Settings, User, Bell } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, Settings, User, Bell, LogOut } from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,6 +10,12 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, onCreateItem }: LayoutProps) => {
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -30,9 +38,22 @@ export const Layout = ({ children, onCreateItem }: LayoutProps) => {
               <Button variant="ghost" size="icon">
                 <Settings className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon">
-                <User className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem disabled>
+                    {user?.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {onCreateItem && (
                 <Button variant="financial" onClick={onCreateItem}>
                   <Plus className="h-4 w-4" />

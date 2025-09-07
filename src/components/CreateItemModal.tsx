@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { itemService, profileService } from "@/services/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,14 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Users, DollarSign } from "lucide-react";
-import { Item, User } from "@/types";
-import { mockUsers } from "@/data/mockData";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, X, Users, DollarSign, Calendar } from "lucide-react";
+import { Profile, ITEM_CATEGORIES } from "@/types/database";
 
 interface CreateItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (item: Omit<Item, 'id' | 'createdAt' | 'bookings' | 'documents' | 'recurringBills' | 'oneTimeBills'>) => void;
+  onCreate: () => Promise<void>;
 }
 
 interface OwnerInput {
@@ -21,7 +23,7 @@ interface OwnerInput {
   percentage: number;
 }
 
-export const CreateItemModal = ({ isOpen, onClose, onCreate }: CreateItemModalProps) => {
+export const CreateItemModal = ({ isOpen, onClose, onCreate, users, currentUserId }: CreateItemModalProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [value, setValue] = useState("");
@@ -80,7 +82,7 @@ export const CreateItemModal = ({ isOpen, onClose, onCreate }: CreateItemModalPr
       .map(owner => owner.userId)
       .filter(Boolean);
     
-    return mockUsers.filter(user => !selectedUserIds.includes(user.id));
+    return users.filter(user => !selectedUserIds.includes(user.id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,7 +104,7 @@ export const CreateItemModal = ({ isOpen, onClose, onCreate }: CreateItemModalPr
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const itemOwners = owners.map(owner => ({
-      user: mockUsers.find(user => user.id === owner.userId)!,
+      user: users.find(user => user.id === owner.userId)!,
       percentage: owner.percentage
     }));
 
@@ -111,7 +113,7 @@ export const CreateItemModal = ({ isOpen, onClose, onCreate }: CreateItemModalPr
       description: description.trim(),
       value: parseFloat(value),
       owners: itemOwners,
-      createdBy: "1" // Current user
+      createdBy: currentUserId || ""
     });
 
     // Reset form
